@@ -1,7 +1,11 @@
 package sube.interviews.mareoenvios.entity;
 
 
-import javax.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import java.time.LocalDate;
 import java.util.Date;
 
 @Entity
@@ -11,10 +15,8 @@ public class Shipping {
     private Integer id;
     private Integer customerId;
     private String state;
-    @Temporal(TemporalType.DATE)
-    private Date sendDate;
-    @Temporal(TemporalType.DATE)
-    private Date arriveDate;
+    private LocalDate sendDate;
+    private LocalDate arriveDate;
     private Integer priority;
 
     public Integer getId() {
@@ -41,19 +43,19 @@ public class Shipping {
         this.state = state;
     }
 
-    public Date getSendDate() {
+    public LocalDate getSendDate() {
         return sendDate;
     }
 
-    public void setSendDate(Date sendDate) {
+    public void setSendDate(LocalDate sendDate) {
         this.sendDate = sendDate;
     }
 
-    public Date getArriveDate() {
+    public LocalDate getArriveDate() {
         return arriveDate;
     }
 
-    public void setArriveDate(Date arriveDate) {
+    public void setArriveDate(LocalDate arriveDate) {
         this.arriveDate = arriveDate;
     }
 

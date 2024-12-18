@@ -5,18 +5,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-import javax.annotation.PostConstruct;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.env.Environment;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.persistence.EntityManager;
 import sube.interviews.mareoenvios.entity.Shipping;
 import sube.interviews.mareoenvios.model.Shipment;
 import sube.interviews.mareoenvios.model.TaskRequest;
@@ -26,7 +25,7 @@ import sube.interviews.mareoenvios.repository.TaskRepository;
 
 @Service
 public class TaskService {
-
+	
 	private static final Logger logger = LoggerFactory.getLogger(TaskService.class);
 	private final TaskRepository taskRepository;
 	private final ShippingRepository shippingRepository;
@@ -34,8 +33,10 @@ public class TaskService {
 	private final Map<Long, ReentrantLock> shippingLocks = new ConcurrentHashMap<>();
 	private volatile boolean databaseInitialized = false;
 
-	@PersistenceContext
 	private EntityManager entityManager;
+	
+	 @Autowired
+	 private Environment environment;
 
 	@Autowired
 	public TaskService(ShippingClient shippingClient, TaskRepository taskRepository,
@@ -48,17 +49,23 @@ public class TaskService {
 
 	@PostConstruct
 	public void init() {
-		waitForDatabaseInitialization();
+		if (environment.getActiveProfiles().length > 0 && environment.getActiveProfiles()[0].equals("local")) {
+
+		} else {
+			waitForDatabaseInitialization();
+		}
 
 	}
 
 	@EventListener
 	public void handleContextRefresh(ContextRefreshedEvent event) {
 		logger.info("ContextRefreshedEvent received");
+        if (environment.getActiveProfiles().length > 0 && !environment.getActiveProfiles()[0].equals("local")) {
 		if (!databaseInitialized) {
 			waitForDatabaseInitialization();
 			logger.info("Database is initialized");
 		}
+        }
 	}
 
 	public void processTasks(TaskRequest request) {
@@ -101,7 +108,7 @@ public class TaskService {
 				taskRepository.recordTaskError(shipment.getShippingId(),
 						"Error processing transition: " + e.getMessage());
 			} finally {
-				lock.unlock(); // Liberar el lock
+				lock.unlock();
 				logger.info("Finished processing shipment: {}", shipment.getShippingId());
 			}
 		} else {
@@ -118,7 +125,7 @@ public class TaskService {
 	             databaseInitialized = true;
 	          } catch (Exception e){
 	             logger.error("Error while waiting for database to initialize: " + e.getMessage(), e);
-	             taskRepository.recordTaskError(0L, "Error al inicializar la base de datos: " + e.getMessage()); // se usa un id 0 para denotar un error global.
+	             taskRepository.recordTaskError(0L, "Error al inicializar la base de datos: " + e.getMessage());
 	              try {
 	                Thread.sleep(100);
 	              } catch (InterruptedException ex) {
