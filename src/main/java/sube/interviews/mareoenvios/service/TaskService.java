@@ -2,7 +2,6 @@ package sube.interviews.mareoenvios.service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -21,6 +20,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import sube.interviews.mareoenvios.entity.Shipping;
 import sube.interviews.mareoenvios.model.Shipment;
+import sube.interviews.mareoenvios.model.ShippingClient;
 import sube.interviews.mareoenvios.model.TaskRequest;
 import sube.interviews.mareoenvios.model.TaskStatusResponse;
 import sube.interviews.mareoenvios.repository.ShippingRepository;
@@ -35,6 +35,7 @@ public class TaskService {
 	private final ThreadPoolTaskScheduler taskScheduler;
 	private final Map<Long, ReentrantLock> shippingLocks = new ConcurrentHashMap<>();
 	private volatile boolean databaseInitialized = false;
+	private final ShippingService shippingService;
 
 	@Autowired
 	private EntityManagerFactory entityManagerFactory;
@@ -44,26 +45,27 @@ public class TaskService {
 
 	@Autowired
 	public TaskService(ShippingClient shippingClient, TaskRepository taskRepository,
-			ShippingRepository shippingRepository) {
+			ShippingRepository shippingRepository, ShippingService shippingService) {
 		this.taskRepository = taskRepository;
+		this.shippingService = shippingService;
 		this.shippingRepository = shippingRepository;
 		this.taskScheduler = new ThreadPoolTaskScheduler();
 		this.taskScheduler.initialize();
 	}
 
-    @PostConstruct
-    public void initialize(){
-      setEntityManager();
-        if (environment.getActiveProfiles().length > 0 && !environment.getActiveProfiles()[0].equals("local")) {
-                waitForDatabaseInitialization();
-            }
-        
-    }
-    
 	@PostConstruct
-    public void setEntityManager(){
-      this.entityManager = entityManagerFactory.createEntityManager();
-    }
+	public void initialize() {
+		setEntityManager();
+		if (environment.getActiveProfiles().length > 0 && !environment.getActiveProfiles()[0].equals("local")) {
+			waitForDatabaseInitialization();
+		}
+
+	}
+
+	@PostConstruct
+	public void setEntityManager() {
+		this.entityManager = entityManagerFactory.createEntityManager();
+	}
 
 	@EventListener
 	public void handleContextRefresh(ContextRefreshedEvent event) {
@@ -105,10 +107,16 @@ public class TaskService {
 				Shipping shipping = shippingRepository.findById(shipment.getShippingId().intValue()).orElse(null);
 
 				if (shipping != null) {
-					processShipping(shipping);
+					if (shipment.isNextState()) {
+						processShipping(shipping);
+					} else {
+						cancelShipping(shipping);
+					}
 				} else {
+
 					logger.error("Shipping not found with id: {}", shipment.getShippingId());
 					taskRepository.recordTaskError(shipment.getShippingId(), "Shipping not found");
+
 				}
 			} catch (Exception e) {
 				logger.error("Error processing shipment: {}, error: {}", shipment.getShippingId(), e.getMessage(), e);
@@ -147,19 +155,13 @@ public class TaskService {
 		try {
 			switch (currentState) {
 			case "Inicial":
-				shipping.setState("Entregado al correo");
-				shippingRepository.save(shipping);
-				taskRepository.recordSuccessfulTask(shipping.getId().longValue(), "Entregado al correo");
+                shippingService.updateShippingState(shipping.getId(), "Entregado al correo");
 				break;
 			case "Entregado al correo":
-				shipping.setState("En camino");
-				shippingRepository.save(shipping);
-				taskRepository.recordSuccessfulTask(shipping.getId().longValue(), "En camino");
+                shippingService.updateShippingState(shipping.getId(), "En camino");
 				break;
 			case "En camino":
-				shipping.setState("Entregado");
-				shippingRepository.save(shipping);
-				taskRepository.recordSuccessfulTask(shipping.getId().longValue(), "Entregado");
+                shippingService.updateShippingState(shipping.getId(), "Entregado");
 				break;
 			default:
 				logger.warn("Invalid shipping state: {}. Nothing to do.", currentState);
@@ -168,6 +170,16 @@ public class TaskService {
 			logger.error("Error processing transition for shipping: " + shipping.getId(), e);
 			taskRepository.recordTaskError(shipping.getId().longValue(),
 					"Error processing transition: " + e.getMessage());
+		}
+	}
+
+	private void cancelShipping(Shipping shipping) {
+		try {
+			shippingService.updateShippingState(shipping.getId(), "Cancelado");
+		} catch (Exception e) {
+			logger.error("Error processing cancelation for shipping: " + shipping.getId(), e);
+			taskRepository.recordTaskError(shipping.getId().longValue(),
+					"Error processing cancelation: " + e.getMessage());
 		}
 	}
 

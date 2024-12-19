@@ -2,6 +2,7 @@ package sube.interviews.mareoenvios.repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -70,10 +71,23 @@ public class TaskRepository {
 	public TaskStatusResponse getTaskStatus() {
 		try {
 			List<TaskShipping> taskShippings = taskShippingRepository.findAll();
+
+			Map<Long, List<String>> transitionHistoryMap = taskShippings.stream()
+					.filter(taskShipping -> taskShipping.getStatus().equals("SUCCESS"))
+					.collect(Collectors.groupingBy(taskShipping -> taskShipping.getShippingId().longValue(),
+							Collectors.mapping(TaskShipping::getMessage, Collectors.toList())));
+
 			List<ShipmentStatus> shipmentStatuses = taskShippings.stream()
-					.map(taskShipping -> new ShipmentStatus(taskShipping.getShippingId().longValue(),
-							taskShipping.getStatus(), taskShipping.getMessage()))
-					.collect(Collectors.toList());
+					.collect(Collectors.toMap(taskShipping -> taskShipping.getShippingId().longValue(),
+							taskShipping -> taskShipping, (existing, replacement) -> existing // Mantener el primero en
+																								// caso de duplicado
+					)).values().stream().map(taskShipping -> {
+						Long shippingId = taskShipping.getShippingId().longValue();
+						List<String> history = transitionHistoryMap.getOrDefault(shippingId, List.of());
+						return new ShipmentStatus(shippingId, taskShipping.getStatus(), taskShipping.getMessage(),
+								history);
+					}).collect(Collectors.toList());
+
 			TaskStatusResponse taskStatusResponse = new TaskStatusResponse();
 			taskStatusResponse.setShipmentStatuses(shipmentStatuses);
 			return taskStatusResponse;

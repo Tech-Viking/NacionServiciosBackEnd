@@ -10,7 +10,7 @@ import sube.interviews.mareoenvios.entity.Shipping;
 @Repository
 public interface ShippingRepository extends JpaRepository<Shipping, Integer> {
 	
-    @Query("SELECT s FROM Shipping s LEFT JOIN FETCH s.shippingItems WHERE s.id = :shippingId")
-  Optional<Shipping> findByIdWithItems(Integer shippingId);
+	  @Query("SELECT s FROM Shipping s WHERE s.id = :shippingId")
+	   Optional<Shipping> findByIdWithItems(Integer shippingId);
     
 }

@@ -10,6 +10,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.server.ResponseStatusException;
 
 import sube.interviews.mareoenvios.entity.Shipping;
+import sube.interviews.mareoenvios.model.ShippingClient;
 import sube.interviews.mareoenvios.repository.ShippingRepository;
 import sube.interviews.mareoenvios.repository.TaskRepository;
 
@@ -55,7 +56,7 @@ public class ShippingService {
 				shipping.setState(newState);
 				shippingRepository.save(shipping);
 				taskRepository.recordSuccessfulTask(shipping.getId().longValue(), newState);
-				// shippingClient.sendCommand(shipping, newState); // lo comento por ahora
+				shippingClient.sendCommand(shipping, newState);
 			} else {
 				logger.error("Transición de estado invalida de " + shipping.getState() + " a " + newState);
 				throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -77,20 +78,24 @@ public class ShippingService {
 					"Error al actualizar el estado del envío: " + e.getMessage());
 		}
 	}
+	
 
 	private boolean isValidTransition(String currentState, String newState) {
-		switch (currentState) {
-		case "Inicial":
-			return newState.equals("Entregado al correo") || newState.equals("Cancelado");
-		case "Entregado al correo":
-			return newState.equals("En camino") || newState.equals("Cancelado");
-		case "En camino":
-			return newState.equals("Entregado") || newState.equals("Cancelado");
-		case "Entregado":
-		case "Cancelado":
-			return false;
-		default:
-			return false;
-		}
+	    if (currentState.equals(newState)) { // 
+	        return false;
+	    }
+	    switch (currentState) {
+	        case "Inicial":
+	            return newState.equals("Entregado al correo") || newState.equals("Cancelado");
+	        case "Entregado al correo":
+	            return newState.equals("En camino") || newState.equals("Cancelado");
+	        case "En camino":
+	            return newState.equals("Entregado") || newState.equals("Cancelado");
+	        case "Entregado":
+	        case "Cancelado":
+	            return false;
+	        default:
+	            return false;
+	    }
 	}
 }
