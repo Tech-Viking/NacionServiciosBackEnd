@@ -59,6 +59,10 @@ La aplicación se despliega utilizando Docker y Docker Compose. La arquitectura 
 *   **Construir y levantar los contenedores (en un solo paso):**
 
     docker-compose up --build
+    
+    * **Ver los logs:**
+
+   docker-compose logs -f
 
 
 ### Acceso a la Aplicación
@@ -67,15 +71,11 @@ La aplicación se despliega utilizando Docker y Docker Compose. La arquitectura 
 	http://localhost  (o cualquier otro puerto si lo has configurado en el balanceador de carga)
    
 *   **URL de Swagger UI:**
-    http://localhost/swagger-ui/index.html
+    http://localhost/swagger-ui/index.html#/
     
-* **Ver los logs:**
-
-   docker-compose logs -f
 
 ## Notas Adicionales
 
 *   Es necesario Docker y Docker Compose instalados.
 *   Los archivos de configuración (`docker-compose.yml`, `nginx.conf`, `application.properties`) se encuentran en la raíz del proyecto.
 
-## Estructura del Proyecto
