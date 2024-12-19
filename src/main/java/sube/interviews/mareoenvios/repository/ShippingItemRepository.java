@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import sube.interviews.mareoenvios.entity.ShippingItem;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ShippingItemRepository extends JpaRepository<ShippingItem, Integer> {
@@ -16,4 +17,5 @@ public interface ShippingItemRepository extends JpaRepository<ShippingItem, Inte
             "ORDER BY total_count DESC " +
             "LIMIT 3", nativeQuery = true)
     List<Object[]> findTop3Products();
+    
 }
