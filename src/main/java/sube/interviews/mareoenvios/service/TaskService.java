@@ -1,22 +1,24 @@
 package sube.interviews.mareoenvios.service;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-
-import javax.annotation.PostConstruct;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.env.Environment;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import sube.interviews.mareoenvios.entity.Shipping;
 import sube.interviews.mareoenvios.model.Shipment;
 import sube.interviews.mareoenvios.model.TaskRequest;
@@ -34,8 +36,11 @@ public class TaskService {
 	private final Map<Long, ReentrantLock> shippingLocks = new ConcurrentHashMap<>();
 	private volatile boolean databaseInitialized = false;
 
-	@PersistenceContext
+	@Autowired
+	private EntityManagerFactory entityManagerFactory;
 	private EntityManager entityManager;
+	@Autowired
+	private Environment environment;
 
 	@Autowired
 	public TaskService(ShippingClient shippingClient, TaskRepository taskRepository,
@@ -46,30 +51,39 @@ public class TaskService {
 		this.taskScheduler.initialize();
 	}
 
+    @PostConstruct
+    public void initialize(){
+      setEntityManager();
+        if (environment.getActiveProfiles().length > 0 && !environment.getActiveProfiles()[0].equals("local")) {
+                waitForDatabaseInitialization();
+            }
+        
+    }
+    
 	@PostConstruct
-	public void init() {
-		waitForDatabaseInitialization();
-
-	}
+    public void setEntityManager(){
+      this.entityManager = entityManagerFactory.createEntityManager();
+    }
 
 	@EventListener
 	public void handleContextRefresh(ContextRefreshedEvent event) {
 		logger.info("ContextRefreshedEvent received");
-		if (!databaseInitialized) {
-			waitForDatabaseInitialization();
-			logger.info("Database is initialized");
+		if (environment.getActiveProfiles().length > 0 && !environment.getActiveProfiles()[0].equals("local")) {
+			if (!databaseInitialized) {
+				waitForDatabaseInitialization();
+				logger.info("Database is initialized");
+			}
 		}
 	}
 
 	public void processTasks(TaskRequest request) {
 		try {
-			waitForDatabaseInitialization();
 			logger.info("Received task request with {} shipments.", request.getShipments().size());
 
 			request.getShipments().forEach(shipment -> {
 				Runnable task = () -> processShipment(shipment);
 
-				Date startTime = new Date(System.currentTimeMillis() + shipment.getStartTimeInSeconds() * 1000);
+				Instant startTime = Instant.now().plus(shipment.getStartTimeInSeconds(), ChronoUnit.SECONDS);
 				taskScheduler.schedule(task, startTime);
 				logger.info("Scheduled shipment: {} to start in {} seconds.", shipment.getShippingId(),
 						shipment.getStartTimeInSeconds());
@@ -101,7 +115,7 @@ public class TaskService {
 				taskRepository.recordTaskError(shipment.getShippingId(),
 						"Error processing transition: " + e.getMessage());
 			} finally {
-				lock.unlock(); // Liberar el lock
+				lock.unlock();
 				logger.info("Finished processing shipment: {}", shipment.getShippingId());
 			}
 		} else {
@@ -110,23 +124,23 @@ public class TaskService {
 		}
 	}
 
-	private void waitForDatabaseInitialization()  {
-	     while(!databaseInitialized){
-	         try{
-	              logger.info("Waiting for database to be initialized");
-	            entityManager.createNativeQuery("SELECT 1 FROM shipping").getSingleResult();
-	             databaseInitialized = true;
-	          } catch (Exception e){
-	             logger.error("Error while waiting for database to initialize: " + e.getMessage(), e);
-	             taskRepository.recordTaskError(0L, "Error al inicializar la base de datos: " + e.getMessage()); // se usa un id 0 para denotar un error global.
-	              try {
-	                Thread.sleep(100);
-	              } catch (InterruptedException ex) {
-	                Thread.currentThread().interrupt();
-	               }
-	           }
-	        }
-	 }
+	private void waitForDatabaseInitialization() {
+		while (!databaseInitialized) {
+			try {
+				logger.info("Waiting for database to be initialized");
+				entityManager.createNativeQuery("SELECT 1 FROM shipping").getSingleResult();
+				databaseInitialized = true;
+			} catch (Exception e) {
+				logger.error("Error while waiting for database to initialize: " + e.getMessage(), e);
+				taskRepository.recordTaskError(0L, "Error al inicializar la base de datos: " + e.getMessage());
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		}
+	}
 
 	private void processShipping(Shipping shipping) {
 		String currentState = shipping.getState();

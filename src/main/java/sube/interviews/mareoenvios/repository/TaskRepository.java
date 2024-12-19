@@ -1,5 +1,6 @@
 package sube.interviews.mareoenvios.repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,8 +29,8 @@ public class TaskRepository {
 			taskShipping.setShippingId(shippingId.intValue());
 			taskShipping.setStatus("SUCCESS");
 			taskShipping.setMessage("Task processed successfully, moved to state: " + state);
-			taskShipping.setStartDate(new java.util.Date());
-			taskShipping.setEndDate(new java.util.Date());
+			taskShipping.setStartDate(LocalDate.now());
+			taskShipping.setEndDate(LocalDate.now());
 			taskShippingRepository.save(taskShipping);
 		} catch (DataAccessException e) {
 			logger.error("Error al grabar información del estado de la tarea", e);
@@ -43,8 +44,8 @@ public class TaskRepository {
 			taskShipping.setShippingId(shippingId.intValue());
 			taskShipping.setStatus("CONFLICT");
 			taskShipping.setMessage("Concurrency conflict detected.");
-			taskShipping.setStartDate(new java.util.Date());
-			taskShipping.setEndDate(new java.util.Date());
+			taskShipping.setStartDate(LocalDate.now());
+			taskShipping.setEndDate(LocalDate.now());
 			taskShippingRepository.save(taskShipping);
 		} catch (DataAccessException e) {
 			logger.error("Error al grabar información de conflicto de concurrencia", e);
@@ -58,8 +59,8 @@ public class TaskRepository {
 			taskShipping.setShippingId(shippingId.intValue());
 			taskShipping.setStatus("ERROR");
 			taskShipping.setMessage("Task failed: " + errorMessage);
-			taskShipping.setStartDate(new java.util.Date());
-			taskShipping.setEndDate(new java.util.Date());
+			taskShipping.setStartDate(LocalDate.now());
+			taskShipping.setEndDate(LocalDate.now());
 			taskShippingRepository.save(taskShipping);
 		} catch (DataAccessException e) {
 			logger.error("Error al grabar información del error de la tarea", e);
