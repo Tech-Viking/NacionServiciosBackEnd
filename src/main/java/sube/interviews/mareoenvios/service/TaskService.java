@@ -9,6 +9,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
@@ -36,6 +37,9 @@ public class TaskService {
 	private final Map<Long, ReentrantLock> shippingLocks = new ConcurrentHashMap<>();
 	private volatile boolean databaseInitialized = false;
 	private final ShippingService shippingService;
+
+	@Value("${app.task.timeout-seconds}")
+	private int taskTimeoutSeconds;
 
 	@Autowired
 	private EntityManagerFactory entityManagerFactory;
@@ -99,24 +103,37 @@ public class TaskService {
 	}
 
 	private void processShipment(Shipment shipment) {
+		Instant startTime = Instant.now();
 		logger.info("Processing shipment: {}", shipment.getShippingId());
 		ReentrantLock lock = shippingLocks.computeIfAbsent(shipment.getShippingId(), k -> new ReentrantLock());
 
 		if (lock.tryLock()) {
 			try {
+				long elapsedTime = ChronoUnit.SECONDS.between(startTime, Instant.now());
+				if (elapsedTime > taskTimeoutSeconds) {
+					logger.error("Task timed out for shipment: {}, elapsedTime: {} seconds", shipment.getShippingId(),
+							elapsedTime);
+					taskRepository.recordTaskError(shipment.getShippingId(),
+							"Task timed out after " + elapsedTime + " seconds");
+					return;
+				}
+
 				Shipping shipping = shippingRepository.findById(shipment.getShippingId().intValue()).orElse(null);
 
 				if (shipping != null) {
-					if (shipment.isNextState()) {
-						processShipping(shipping);
+					if (!shipping.getState().equals("Entregado") && !shipping.getState().equals("Cancelado")) {
+						if (shipment.isNextState()) {
+							processShipping(shipping);
+						} else {
+							cancelShipping(shipping);
+						}
 					} else {
-						cancelShipping(shipping);
+						logger.warn("Shipping with id {} already in final state: {}. Nothing to do.",
+								shipment.getShippingId(), shipping.getState());
 					}
 				} else {
-
 					logger.error("Shipping not found with id: {}", shipment.getShippingId());
 					taskRepository.recordTaskError(shipment.getShippingId(), "Shipping not found");
-
 				}
 			} catch (Exception e) {
 				logger.error("Error processing shipment: {}, error: {}", shipment.getShippingId(), e.getMessage(), e);
@@ -155,13 +172,13 @@ public class TaskService {
 		try {
 			switch (currentState) {
 			case "Inicial":
-                shippingService.updateShippingState(shipping.getId(), "Entregado al correo");
+				shippingService.updateShippingState(shipping.getId(), "Entregado al correo");
 				break;
 			case "Entregado al correo":
-                shippingService.updateShippingState(shipping.getId(), "En camino");
+				shippingService.updateShippingState(shipping.getId(), "En camino");
 				break;
 			case "En camino":
-                shippingService.updateShippingState(shipping.getId(), "Entregado");
+				shippingService.updateShippingState(shipping.getId(), "Entregado");
 				break;
 			default:
 				logger.warn("Invalid shipping state: {}. Nothing to do.", currentState);

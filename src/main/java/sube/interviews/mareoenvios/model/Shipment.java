@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Shipment {
 	
+	@JsonProperty("shippingId")
 	private Long shippingId;
 	@JsonProperty("time-start-in-seg")
 	private int startTimeInSeconds;
@@ -35,11 +36,4 @@ public class Shipment {
 	    this.nextState = nextState;
 	}
 
-	public String getTransitionPayload() {
-	    if (nextState) {
-	        return "{ \"transition\": \"sendToMail\" }";
-	    } else {
-	        return "{ \"transition\": \"cancelled\" }";
-	    }
-	}
 }
