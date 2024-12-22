@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,48 +19,27 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import sube.interviews.mareoenvios.entity.Customer;
-import sube.interviews.mareoenvios.entity.Shipping;
-import sube.interviews.mareoenvios.model.TaskRequest;
-import sube.interviews.mareoenvios.model.TaskStatusResponse;
 import sube.interviews.mareoenvios.model.TopProductResponse;
+import sube.interviews.mareoenvios.model.TransitionRequest;
 import sube.interviews.mareoenvios.service.CustomerService;
 import sube.interviews.mareoenvios.service.ReportService;
 import sube.interviews.mareoenvios.service.ShippingService;
-import sube.interviews.mareoenvios.service.TaskService;
+import sube.interviews.mareoenvios.entity.Shipping;
 
 @RestController
-@RequestMapping("/api")
-@Tag(name = "Task Management", description = "Endpoints para administrar tareas, reportes y entidades relacionadas.")
-public class TaskController {
+@RequestMapping("/")
+@Tag(name = "Mareo Envíos", description = "Endpoints para administrar la empresa de envíos.")
+public class ShippingController {
 
-	private final TaskService taskService;
 	private final ReportService reportService;
 	private final CustomerService customerService;
-	private final ShippingService shippingService;
+    private final ShippingService shippingService;
 
-	public TaskController(TaskService taskService, ReportService reportService, CustomerService customerService,
-			ShippingService shippingService) {
-		this.taskService = taskService;
+
+	public ShippingController(ReportService reportService, CustomerService customerService, ShippingService shippingService) {
 		this.reportService = reportService;
 		this.customerService = customerService;
-		this.shippingService = shippingService;
-	}
-
-	@Operation(summary = "Procesa tareas concurrentes", description = "Inicia el procesamiento de tareas de manera concurrente.")
-	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "Tareas iniciadas correctamente", content = @Content(schema = @Schema(type = "string"))) })
-	@PostMapping("/tarea-concurrente")
-	public ResponseEntity<String> processTasks(@RequestBody TaskRequest request) {
-		taskService.processTasks(request);
-		return ResponseEntity.ok("Tasks are being processed");
-	}
-
-	@Operation(summary = "Obtiene el estado de las tareas", description = "Retorna el estado actual del procesamiento de tareas.")
-	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "Estado de las tareas", content = @Content(schema = @Schema(implementation = TaskStatusResponse.class))) })
-	@GetMapping("/status")
-	public ResponseEntity<TaskStatusResponse> getStatus() {
-		return ResponseEntity.ok(taskService.getStatus());
+        this.shippingService = shippingService;
 	}
 
 	@Operation(summary = "Verifica la salud de la API", description = "Retorna un mensaje de confirmación para indicar que la API está funcionando correctamente.")
@@ -112,8 +90,8 @@ public class TaskController {
 	@ApiResponses(value = {
 			@ApiResponse(responseCode = "200", description = "Estado de envío actualizado", content = @Content(schema = @Schema(type = "string"))) })
 	@PatchMapping("/shippings/{shippingId}")
-	public ResponseEntity<?> updateShipping(@PathVariable Integer shippingId, @RequestBody String newState) {
-		shippingService.updateShippingState(shippingId, newState);
+	public ResponseEntity<?> updateShipping(@PathVariable Integer shippingId, @RequestBody TransitionRequest transition) {
+		shippingService.updateShippingState(shippingId, transition.getTransition());
 		return ResponseEntity.ok("Shipping state updated");
 	}
 
