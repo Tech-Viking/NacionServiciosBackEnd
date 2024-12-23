@@ -1,21 +1,38 @@
 services:
+  task-processor:
+    image: task-processor
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mareo_envios_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+    networks:
+      - mynetwork
+  mareo-envios:
+    image: mareo-envios
+    ports:
+      - "8081:8080"  # Usa un puerto diferente para evitar conflictos
+    environment:
+      # Agrega aquí cualquier variable de entorno específica para user-service, si es que tiene.
+      # Por ejemplo, si necesita acceder a task-service, puedes configurar la URL aqui:
+      TASK_PROCESSOR_URL: http://task-processor:8080 
+    networks:
+      - mynetwork
+    depends_on:
+      - task-processor  #  la user-service depende de la task service.
   postgres:
-      image: postgres:latest
-      ports:
-        - "8083:5432"
-      environment:
-        - POSTGRES_USER=postgres
-        - POSTGRES_PASSWORD=password
-        - POSTGRES_DB=mareo_envios_db
-      volumes:
-        - postgres_data:/var/lib/postgresql/data
-        - ./sql:/docker-entrypoint-initdb.d
-      healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U postgres"]
-        interval: 10s
-        timeout: 5s
-        retries: 5
-        start_period: 10s
+    image: postgres:14
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mareo_envios_db
+    ports:
+      - "5432:5432"
+    networks:
+      - mynetwork
 
-volumes:
-   postgres_data:
+networks:
+  mynetwork:

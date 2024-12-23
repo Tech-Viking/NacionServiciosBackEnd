@@ -1,7 +1,0 @@
-services:
-  mareo-envios:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-        - PORT=8081
