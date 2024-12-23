@@ -45,8 +45,7 @@ La aplicación se despliega utilizando Docker y Docker Compose. La arquitectura 
 
 *   **Eliminar las imágenes (opcional):**
 
-    docker image rm mareo-envios-master-app1 mareo-envios-master-app2 mareo-envios-master-app3 
-
+docker image rm mareo-envios-master-mareo-envios1 mareo-envios-master-mareo-envios2 mareo-envios-master-mareo-envios3 mareo-envios-master-task-processor1 mareo-envios-master-task-processor2 mareo-envios-master-task-processor3
 *   **Construir las imágenes:**
 
     docker-compose build

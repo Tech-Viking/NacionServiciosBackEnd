@@ -19,11 +19,11 @@ public class DataSourceConfig {
    private DataSource dataSource;
 
 
-   @Value("classpath:schema.sql")
-    private Resource schemaScript;
-
-    @Value("classpath:data.sql")
-    private Resource dataScript;
+//   @Value("classpath:schema.sql")
+//    private Resource schemaScript;
+//
+//    @Value("classpath:data.sql")
+//    private Resource dataScript;
 
 
 //  @Bean
