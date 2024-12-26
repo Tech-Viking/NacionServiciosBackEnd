@@ -1,6 +1,7 @@
 package sube.interviews.taskprocessor.repository;
 
 import java.time.LocalDate;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -13,6 +14,8 @@ import org.springframework.stereotype.Component;
 import sube.interviews.taskprocessor.entity.TaskShipping;
 import sube.interviews.taskprocessor.model.ShipmentStatus;
 import sube.interviews.taskprocessor.model.TaskStatusResponse;
+import static sube.interviews.taskprocessor.util.TaskConstants.*;
+
 
 @Component
 public class TaskRepository {
@@ -28,11 +31,12 @@ public class TaskRepository {
 		try {
 			TaskShipping taskShipping = new TaskShipping();
 			taskShipping.setShippingId(shippingId.intValue());
-			taskShipping.setStatus("SUCCESS");
-			taskShipping.setMessage("Task processed successfully, moved to state: " + state);
+			taskShipping.setStatus(TASK_STATUS_SUCCESS);
+			taskShipping.setMessage(MESSAGE_TASK_SUCCESS  + state);
 			taskShipping.setStartDate(LocalDate.now());
 			taskShipping.setEndDate(LocalDate.now());
 			taskShippingRepository.save(taskShipping);
+			logger.info("Tarea para el envío {} registrada como exitosa con estado: {}", shippingId, state);
 		} catch (DataAccessException e) {
 			logger.error("Error al grabar información del estado de la tarea", e);
 			recordTaskError(shippingId, "Error al grabar información del estado de la tarea" + e.getMessage());
@@ -43,8 +47,8 @@ public class TaskRepository {
 		try {
 			TaskShipping taskShipping = new TaskShipping();
 			taskShipping.setShippingId(shippingId.intValue());
-			taskShipping.setStatus("CONFLICT");
-			taskShipping.setMessage("Concurrency conflict detected.");
+			taskShipping.setStatus(TASK_STATUS_CONFLICT);
+			taskShipping.setMessage(MESSAGE_TASK_CONFLICT);
 			taskShipping.setStartDate(LocalDate.now());
 			taskShipping.setEndDate(LocalDate.now());
 			taskShippingRepository.save(taskShipping);
@@ -58,13 +62,13 @@ public class TaskRepository {
 		try {
 			TaskShipping taskShipping = new TaskShipping();
 			taskShipping.setShippingId(shippingId.intValue());
-			taskShipping.setStatus("ERROR");
-			taskShipping.setMessage("Task failed: " + errorMessage);
+			taskShipping.setStatus(TASK_STATUS_ERROR);
+			taskShipping.setMessage(MESSAGE_TASK_FAILED + errorMessage);
 			taskShipping.setStartDate(LocalDate.now());
 			taskShipping.setEndDate(LocalDate.now());
 			taskShippingRepository.save(taskShipping);
 		} catch (DataAccessException e) {
-			logger.error("Error al grabar información del error de la tarea", e);
+			logger.error("Error al grabar información del error de la tarea para el envío {}: {}", shippingId, e.getMessage());
 		}
 	}
 
@@ -73,14 +77,14 @@ public class TaskRepository {
 			List<TaskShipping> taskShippings = taskShippingRepository.findAll();
 
 			Map<Long, List<String>> transitionHistoryMap = taskShippings.stream()
-					.filter(taskShipping -> taskShipping.getStatus().equals("SUCCESS"))
+					.filter(taskShipping -> taskShipping.getStatus().equals(TASK_STATUS_SUCCESS))
 					.collect(Collectors.groupingBy(taskShipping -> taskShipping.getShippingId().longValue(),
 							Collectors.mapping(TaskShipping::getMessage, Collectors.toList())));
 
 			List<ShipmentStatus> shipmentStatuses = taskShippings.stream()
 					.collect(Collectors.toMap(taskShipping -> taskShipping.getShippingId().longValue(),
-							taskShipping -> taskShipping, (existing, replacement) -> existing 
-					)).values().stream().map(taskShipping -> {
+							taskShipping -> taskShipping, (existing, replacement) -> existing))
+					.values().stream().map(taskShipping -> {
 						Long shippingId = taskShipping.getShippingId().longValue();
 						List<String> history = transitionHistoryMap.getOrDefault(shippingId, List.of());
 						return new ShipmentStatus(shippingId, taskShipping.getStatus(), taskShipping.getMessage(),
@@ -91,7 +95,7 @@ public class TaskRepository {
 			taskStatusResponse.setShipmentStatuses(shipmentStatuses);
 			return taskStatusResponse;
 		} catch (DataAccessException e) {
-			logger.error("Error al obtener el estado de las tareas", e);
+			logger.error("Error al obtener el estado de las tareas: {}", e.getMessage());
 			TaskStatusResponse taskStatusResponse = new TaskStatusResponse();
 			return taskStatusResponse;
 		}

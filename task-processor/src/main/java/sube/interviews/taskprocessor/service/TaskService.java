@@ -19,12 +19,11 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import sube.interviews.taskprocessor.entity.Shipping;
 import sube.interviews.taskprocessor.model.Shipment;
 import sube.interviews.taskprocessor.model.TaskRequest;
 import sube.interviews.taskprocessor.model.TaskStatusResponse;
 import sube.interviews.taskprocessor.repository.TaskRepository;
-import sube.interviews.taskprocessor.entity.Shipping;
-
 
 @Service
 public class TaskService {
@@ -32,13 +31,12 @@ public class TaskService {
 	private static final Logger logger = LoggerFactory.getLogger(TaskService.class);
 	private final TaskRepository taskRepository;
 	private final ThreadPoolTaskScheduler taskScheduler;
-    private final ShippingClient shippingClient; // Nueva dependencia
+	private final ShippingClient shippingClient;
 	private final Map<Long, ReentrantLock> shippingLocks = new ConcurrentHashMap<>();
 	private volatile boolean databaseInitialized = false;
 
-    @Value("${app.task.timeout-seconds}")
-    private int taskTimeoutSeconds;
-
+	@Value("${app.task.timeout-seconds}")
+	private int taskTimeoutSeconds;
 
 	@Autowired
 	private EntityManagerFactory entityManagerFactory;
@@ -46,27 +44,26 @@ public class TaskService {
 	@Autowired
 	private Environment environment;
 
-	@Autowired
 	public TaskService(ShippingClient shippingClient, TaskRepository taskRepository) {
 		this.taskRepository = taskRepository;
-        this.shippingClient = shippingClient; //Asignamos la dependencia
+		this.shippingClient = shippingClient;
 		this.taskScheduler = new ThreadPoolTaskScheduler();
 		this.taskScheduler.initialize();
 	}
 
-    @PostConstruct
-    public void initialize(){
-      setEntityManager();
-        if (environment.getActiveProfiles().length > 0 && !environment.getActiveProfiles()[0].equals("local")) {
-                waitForDatabaseInitialization();
-            }
-        
-    }
-    
 	@PostConstruct
-    public void setEntityManager(){
-      this.entityManager = entityManagerFactory.createEntityManager();
-    }
+	public void initialize() {
+		setEntityManager();
+		if (environment.getActiveProfiles().length > 0 && !environment.getActiveProfiles()[0].equals("local")) {
+			waitForDatabaseInitialization();
+		}
+
+	}
+
+	@PostConstruct
+	public void setEntityManager() {
+		this.entityManager = entityManagerFactory.createEntityManager();
+	}
 
 	@EventListener
 	public void handleContextRefresh(ContextRefreshedEvent event) {
@@ -100,33 +97,29 @@ public class TaskService {
 	}
 
 	private void processShipment(Shipment shipment) {
-        Instant startTime = Instant.now();
+		Instant startTime = Instant.now();
 		logger.info("Processing shipment: {}", shipment.getShippingId());
 		ReentrantLock lock = shippingLocks.computeIfAbsent(shipment.getShippingId(), k -> new ReentrantLock());
 
 		if (lock.tryLock()) {
+			logger.info("Lock acquired for shipment: {}", shipment.getShippingId());
 			try {
-                long elapsedTime = ChronoUnit.SECONDS.between(startTime, Instant.now());
-                if (elapsedTime > taskTimeoutSeconds) {
-                   logger.error("Task timed out for shipment: {}, elapsedTime: {} seconds", shipment.getShippingId(), elapsedTime);
-                   taskRepository.recordTaskError(shipment.getShippingId(), "Task timed out after " + elapsedTime + " seconds");
-                   return;
-                }
+				long elapsedTime = ChronoUnit.SECONDS.between(startTime, Instant.now());
+				if (elapsedTime > taskTimeoutSeconds) {
+					logger.error("Task timed out for shipment: {}, elapsedTime: {} seconds", shipment.getShippingId(),
+							elapsedTime);
+					taskRepository.recordTaskError(shipment.getShippingId(),
+							"Task timed out after " + elapsedTime + " seconds");
+					return;
+				}
 
 				Shipping shipping = new Shipping();
-                shipping.setId(shipment.getShippingId().intValue());
+				shipping.setId(shipment.getShippingId().intValue());
 
-
-				if (shipping != null) {
-                    if (shipment.isNextState()) {
-                       processShipping(shipping);
-                    } else {
-                       cancelShipping(shipping);
-                    }
-
+				if (shipment.isNextState()) {
+					processShipping(shipping);
 				} else {
-					logger.error("Shipping not found with id: {}", shipment.getShippingId());
-					taskRepository.recordTaskError(shipment.getShippingId(), "Shipping not found");
+					cancelShipping(shipping);
 				}
 			} catch (Exception e) {
 				logger.error("Error processing shipment: {}, error: {}", shipment.getShippingId(), e.getMessage(), e);
@@ -134,7 +127,7 @@ public class TaskService {
 						"Error processing transition: " + e.getMessage());
 			} finally {
 				lock.unlock();
-				logger.info("Finished processing shipment: {}", shipment.getShippingId());
+		         logger.info("Lock released for shipment: {}", shipment.getShippingId());
 			}
 		} else {
 			logger.warn("Concurrency conflict for shipment: {}", shipment.getShippingId());
@@ -161,34 +154,41 @@ public class TaskService {
 	}
 
 	private void processShipping(Shipping shipping) {
-		try {
-			    shippingClient.sendCommand(shipping, "sendToMail");
-                taskRepository.recordSuccessfulTask(shipping.getId().longValue(), "Entregado al correo");
-				
-                shippingClient.sendCommand(shipping, "inTravel");
-                 taskRepository.recordSuccessfulTask(shipping.getId().longValue(), "En camino");
-				
-                shippingClient.sendCommand(shipping, "delivered");
-                 taskRepository.recordSuccessfulTask(shipping.getId().longValue(), "Entregado");
-				
-		} catch (Exception e) {
-			logger.error("Error processing transition for shipping: " + shipping.getId(), e);
-			taskRepository.recordTaskError(shipping.getId().longValue(),
-					"Error processing transition: " + e.getMessage());
-		}
-	}
+		   try {
+		      logger.info("Sending command sendToMail for shipping: {}", shipping.getId());
+		       shippingClient.sendCommand(shipping, "sendToMail");
+		       taskRepository.recordSuccessfulTask(shipping.getId().longValue(), "Entregado al correo");
+		       logger.info("Command sendToMail processed for shipping: {}", shipping.getId());
+		       
+		        logger.info("Sending command inTravel for shipping: {}", shipping.getId());
+		       shippingClient.sendCommand(shipping, "inTravel");
+		        taskRepository.recordSuccessfulTask(shipping.getId().longValue(), "En camino");
+		         logger.info("Command inTravel processed for shipping: {}", shipping.getId());
 
+		       logger.info("Sending command delivered for shipping: {}", shipping.getId());
+		       shippingClient.sendCommand(shipping, "delivered");
+		        taskRepository.recordSuccessfulTask(shipping.getId().longValue(), "Entregado");
+		         logger.info("Command delivered processed for shipping: {}", shipping.getId());
 
-     private void cancelShipping(Shipping shipping) {
-		try {
-             shippingClient.sendCommand(shipping, "cancelled");
-             taskRepository.recordSuccessfulTask(shipping.getId().longValue(), "Cancelado");
-		} catch (Exception e) {
-			logger.error("Error processing cancelation for shipping: " + shipping.getId(), e);
-			taskRepository.recordTaskError(shipping.getId().longValue(),
-					"Error processing cancelation: " + e.getMessage());
+		   } catch (Exception e) {
+		       logger.error("Error processing transition for shipping: " + shipping.getId(), e);
+		       taskRepository.recordTaskError(shipping.getId().longValue(),
+		               "Error processing transition: " + e.getMessage());
+		   }
 		}
-	}
+
+	private void cancelShipping(Shipping shipping) {
+		   try {
+		      logger.info("Sending command cancel for shipping: {}", shipping.getId());
+		       shippingClient.sendCommand(shipping, "cancelled");
+		       taskRepository.recordSuccessfulTask(shipping.getId().longValue(), "Cancelado");
+		       logger.info("Command cancel processed for shipping: {}", shipping.getId());
+		   } catch (Exception e) {
+		       logger.error("Error processing cancelation for shipping: " + shipping.getId(), e);
+		       taskRepository.recordTaskError(shipping.getId().longValue(),
+		               "Error processing cancelation: " + e.getMessage());
+		   }
+		}
 
 	public TaskStatusResponse getStatus() {
 		return taskRepository.getTaskStatus();

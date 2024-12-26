@@ -18,36 +18,37 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import sube.interviews.mareoenvios.entity.Customer;
+import sube.interviews.mareoenvios.entity.Shipping;
 import sube.interviews.mareoenvios.model.TopProductResponse;
 import sube.interviews.mareoenvios.model.TransitionRequest;
 import sube.interviews.mareoenvios.service.CustomerService;
 import sube.interviews.mareoenvios.service.ReportService;
 import sube.interviews.mareoenvios.service.ShippingService;
-import sube.interviews.mareoenvios.entity.Shipping;
 
 @RestController
-@RequestMapping("/")
+@RequestMapping("/api")
 @Tag(name = "Mareo Envíos", description = "Endpoints para administrar la empresa de envíos.")
 public class ShippingController {
 
 	private final ReportService reportService;
 	private final CustomerService customerService;
-    private final ShippingService shippingService;
+	private final ShippingService shippingService;
 
-
-	public ShippingController(ReportService reportService, CustomerService customerService, ShippingService shippingService) {
+	public ShippingController(ReportService reportService, CustomerService customerService,
+			ShippingService shippingService) {
 		this.reportService = reportService;
 		this.customerService = customerService;
-        this.shippingService = shippingService;
+		this.shippingService = shippingService;
 	}
 
 	@Operation(summary = "Verifica la salud de la API", description = "Retorna un mensaje de confirmación para indicar que la API está funcionando correctamente.")
 	@ApiResponses(value = {
 			@ApiResponse(responseCode = "200", description = "API funcionando correctamente", content = @Content(schema = @Schema(type = "string"))) })
 	@GetMapping("/health")
-	public ResponseEntity<String> healthCheck() {
-		return ResponseEntity.ok("OK");
+	public ResponseEntity<String> checkApiHealth() {
+	    return ResponseEntity.ok("API is healthy");
 	}
 
 	@Operation(summary = "Obtiene los productos más enviados", description = "Retorna Lista de los productos más enviados.")
@@ -90,8 +91,9 @@ public class ShippingController {
 	@ApiResponses(value = {
 			@ApiResponse(responseCode = "200", description = "Estado de envío actualizado", content = @Content(schema = @Schema(type = "string"))) })
 	@PatchMapping("/shippings/{shippingId}")
-	public ResponseEntity<?> updateShipping(@PathVariable Integer shippingId, @RequestBody TransitionRequest transition) {
-		shippingService.updateShippingState(shippingId, transition.getTransition());
+	public ResponseEntity<?> updateShipping(@PathVariable Integer shippingId,
+			@Valid @RequestBody TransitionRequest transition) {
+		shippingService.updateShipping(shippingId, transition.getTransition());
 		return ResponseEntity.ok("Shipping state updated");
 	}
 

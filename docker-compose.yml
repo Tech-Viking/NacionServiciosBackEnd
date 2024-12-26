@@ -9,30 +9,31 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mareo_envios_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: password
+      app.init.db: "false"
     networks:
       - mynetwork
   mareo-envios:
     image: mareo-envios
     ports:
-      - "8081:8080"  # Usa un puerto diferente para evitar conflictos
+      - "8081:8080"
     environment:
-      # Agrega aquí cualquier variable de entorno específica para user-service, si es que tiene.
-      # Por ejemplo, si necesita acceder a task-service, puedes configurar la URL aqui:
-      TASK_PROCESSOR_URL: http://task-processor:8080 
+      TASK_PROCESSOR_URL: http://task-processor:8080
     networks:
       - mynetwork
     depends_on:
-      - task-processor  #  la user-service depende de la task service.
+      - task-processor
   postgres:
     image: postgres:14
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: mareo_envios_db
+      PG_INITDB_SKIP_CREATE_DATABASE: true
     ports:
       - "5432:5432"
     networks:
       - mynetwork
+    volumes: [] # Corregido: debe ser una lista vacía
 
 networks:
   mynetwork:

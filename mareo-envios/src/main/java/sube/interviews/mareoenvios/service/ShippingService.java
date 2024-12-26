@@ -22,6 +22,8 @@ public class ShippingService {
         this.shippingRepository = shippingRepository;
    
     }
+    
+
 
     public Optional<Shipping> getShippingById(Integer shippingId) {
         try {
@@ -39,7 +41,8 @@ public class ShippingService {
     }
 
 
-    public void updateShippingState(Integer shippingId, String newState) {
+
+    public void updateShipping(Integer shippingId, String newState) {
         try {
             Shipping shipping = shippingRepository.findById(shippingId).orElseThrow(() -> {
                 logger.error("Shipping not found with id: " + shippingId);
@@ -47,7 +50,7 @@ public class ShippingService {
             });
             if (isValidTransition(shipping.getState(), newState)) {
                
-                applyDelay(newState); // Aplicar el delay directamente aquí
+                applyDelay(newState);
                 shipping.setState(newState);
                 shippingRepository.save(shipping);
 
