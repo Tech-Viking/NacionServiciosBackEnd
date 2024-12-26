@@ -1,9 +1,9 @@
 package sube.interviews.mareoenvios.controller;
 
 import java.util.List;
-import java.util.Optional;
 
-import org.springframework.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -27,11 +28,14 @@ import sube.interviews.mareoenvios.service.CustomerService;
 import sube.interviews.mareoenvios.service.ReportService;
 import sube.interviews.mareoenvios.service.ShippingService;
 
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+
 @RestController
 @RequestMapping("/api")
 @Tag(name = "Mareo Envíos", description = "Endpoints para administrar la empresa de envíos.")
 public class ShippingController {
 
+	private static final Logger logger = LoggerFactory.getLogger(ShippingController.class);
 	private final ReportService reportService;
 	private final CustomerService customerService;
 	private final ShippingService shippingService;
@@ -48,7 +52,8 @@ public class ShippingController {
 			@ApiResponse(responseCode = "200", description = "API funcionando correctamente", content = @Content(schema = @Schema(type = "string"))) })
 	@GetMapping("/health")
 	public ResponseEntity<String> checkApiHealth() {
-	    return ResponseEntity.ok("API is healthy");
+		logger.info("Health check requested");
+		return ResponseEntity.ok("API is healthy");
 	}
 
 	@Operation(summary = "Obtiene los productos más enviados", description = "Retorna Lista de los productos más enviados.")
@@ -56,7 +61,10 @@ public class ShippingController {
 			@ApiResponse(responseCode = "200", description = "Lista de productos más enviados", content = @Content(schema = @Schema(implementation = TopProductResponse.class, type = "array"))) })
 	@GetMapping("/reports/top-sent")
 	public ResponseEntity<List<TopProductResponse>> getTopSentProducts() {
-		return ResponseEntity.ok(reportService.getTopSentProducts());
+		logger.info("Top sent products requested");
+		List<TopProductResponse> products = reportService.getTopSentProducts();
+		logger.info("Top sent products found: {}", products.size());
+		return ResponseEntity.ok(products);
 	}
 
 	@Operation(summary = "Obtiene un cliente por su ID", description = "Retorna la información de un cliente basado en su ID.")
@@ -64,13 +72,13 @@ public class ShippingController {
 			@ApiResponse(responseCode = "200", description = "Cliente encontrado", content = @Content(schema = @Schema(implementation = Customer.class))),
 			@ApiResponse(responseCode = "404", description = "Cliente no encontrado", content = @Content(schema = @Schema(type = "string"))) })
 	@GetMapping("/customers/{customerId}")
-	public ResponseEntity<?> getCustomer(@PathVariable Integer customerId) {
-		Optional<Customer> customer = customerService.getCustomerById(customerId);
-		if (customer.isPresent()) {
-			return ResponseEntity.ok(customer.get());
-		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Cliente no encontrado");
-		}
+	public ResponseEntity<Customer> getCustomer(@PathVariable Integer customerId) {
+		logger.info("Customer requested with id: {}", customerId);
+		Customer customer = customerService.getCustomerById(customerId)
+				.orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Cliente no encontrado"));
+		logger.info("Customer found with id: {}", customerId);
+		return ResponseEntity.ok(customer);
+
 	}
 
 	@Operation(summary = "Obtiene un envío por su ID", description = "Retorna la información de un envío basado en su ID.")
@@ -78,13 +86,12 @@ public class ShippingController {
 			@ApiResponse(responseCode = "200", description = "Envío encontrado", content = @Content(schema = @Schema(implementation = Shipping.class))),
 			@ApiResponse(responseCode = "404", description = "Envío no encontrado", content = @Content(schema = @Schema(type = "string"))) })
 	@GetMapping("/shippings/{shippingId}")
-	public ResponseEntity<?> getShipping(@PathVariable Integer shippingId) {
-		Optional<Shipping> shipping = shippingService.getShippingById(shippingId);
-		if (shipping.isPresent()) {
-			return ResponseEntity.ok(shipping.get());
-		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Envío no encontrado");
-		}
+	public ResponseEntity<Shipping> getShipping(@PathVariable Integer shippingId) {
+		logger.info("Shipping requested with id: {}", shippingId);
+		Shipping shipping = shippingService.getShippingById(shippingId)
+				.orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Envío no encontrado"));
+		logger.info("Shipping found with id: {}", shippingId);
+		return ResponseEntity.ok(shipping);
 	}
 
 	@Operation(summary = "Actualiza el estado de un envío", description = "Este endpoint actualiza el estado de un envío basado en su ID y el nuevo estado proporcionado.")
@@ -93,7 +100,9 @@ public class ShippingController {
 	@PatchMapping("/shippings/{shippingId}")
 	public ResponseEntity<?> updateShipping(@PathVariable Integer shippingId,
 			@Valid @RequestBody TransitionRequest transition) {
+		logger.info("Update shipping requested with id: {}, transition: {}", shippingId, transition.getTransition());
 		shippingService.updateShipping(shippingId, transition.getTransition());
+		logger.info("Shipping state updated with id: {}, transition: {}", shippingId, transition.getTransition());
 		return ResponseEntity.ok("Shipping state updated");
 	}
 
