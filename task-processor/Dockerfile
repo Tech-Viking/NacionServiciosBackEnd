@@ -8,5 +8,6 @@ RUN mvn clean install -DskipTests
 # Stage 2: Run the application
 FROM openjdk:17-jdk-slim
 WORKDIR /app
-COPY --from=builder /app/target/*.jar app.jar
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+COPY --from=builder /app/target/task-processor-*.jar task-processor.jar
+EXPOSE 8082
+ENTRYPOINT ["java", "-jar", "/app/task-processor.jar"]

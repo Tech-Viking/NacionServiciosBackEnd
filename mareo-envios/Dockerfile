@@ -8,5 +8,6 @@ RUN mvn clean install -DskipTests
 # Stage 2: Run the application
 FROM openjdk:17-jdk-slim
 WORKDIR /app
-COPY --from=builder /app/target/*.jar user-app.jar
-ENTRYPOINT ["java", "-jar", "/app/user-app.jar"]
+COPY --from=builder /app/target/mareo-envios-*.jar mareo-envios.jar
+EXPOSE 8081
+ENTRYPOINT ["java", "-jar", "/app/mareo-envios.jar"]

@@ -11,25 +11,23 @@ La aplicación "Mareo Envíos" permite gestionar el ciclo de vida de los envíos
 *   Un mecanismo de bloqueo para asegurar que los envíos no se procesen de forma simultánea.
 *   Registro del estado de cada envío en una tabla.
 *   Un endpoint para obtener el estado actual de todos los envíos.
-*  Un endpoint para obtener los 3 productos mas solicitados.
-*  Manejo de errores.
-*  Documentación de la api con Swagger UI.
+*   Un endpoint para obtener los 3 productos mas solicitados.
+*   Manejo de errores.
+*   Documentación de la api con Swagger UI.
 
 ## Tecnologías Utilizadas
 
 *   **Backend:** Java 17, Spring Boot, Spring Data JPA
 *   **Base de datos:** PostgreSQL (ejecutándose en Docker)
 *   **Contenedorización:** Docker, Docker Compose
-*   **Balanceador de Carga:** Nginx
 *   **Documentación:** Swagger UI
 
 ## Arquitectura
 
 La aplicación se despliega utilizando Docker y Docker Compose. La arquitectura consta de:
 
-  **Tres instancias de la aplicación:** Ejecutándose en distintos puertos (8081, 8082 y 8083), pero atendiendo en el puerto interno `8080`.
-  **Un servicio de base de datos PostgreSQL:** Ejecutándose en el puerto `5433` en tu host y el `5432` en el contenedor.
-  **Un balanceador de carga Nginx:** Distribuye las peticiones entre las tres instancias de la aplicación.
+*   **Dos instancias de la aplicación:** `mareo-envios` y `task-processor`  ejecutándose en los puertos 8081 y 8082 respectivamente.
+*   **Un servicio de base de datos PostgreSQL:** Ejecutándose en el puerto `5432` en el contenedor y accesible desde el puerto `5432` de tu host.
 
 ## Comandos Clave
 
@@ -37,44 +35,30 @@ La aplicación se despliega utilizando Docker y Docker Compose. La arquitectura 
 
 *   **Detener todos los contenedores:**
 
-    docker-compose down
+    docker compose down -v
 
-*   **Eliminar el volumen de la base de datos (para iniciar con una base de datos desde cero):**
-
-    docker volume rm mareo-envios-master_postgres_data
-
-*   **Eliminar las imágenes (opcional):**
-
-docker image rm mareo-envios-master-mareo-envios1 mareo-envios-master-mareo-envios2 mareo-envios-master-mareo-envios3 mareo-envios-master-task-processor1 mareo-envios-master-task-processor2 mareo-envios-master-task-processor3
 *   **Construir las imágenes:**
 
-    docker-compose build
+
+    docker compose build
 
 
 *   **Levantar los contenedores:**
 
-    docker-compose up
+    docker compose up
 
 *   **Construir y levantar los contenedores (en un solo paso):**
 
-    docker-compose up --build
-    
-    * **Ver los logs:**
-
-   docker-compose logs -f
+     docker compose up --build
 
 
 ### Acceso a la Aplicación
 
-*   **URL de la aplicación:**
-	http://localhost  (o cualquier otro puerto si lo has configurado en el balanceador de carga)
-   
-*   **URL de Swagger UI:**
-    http://localhost/swagger-ui/index.html#/
-    
+*   **URLs de Swagger UI:**
+    *   `http://localhost:8081/swagger-ui/index.html` (`mareo-envios`)
+    *   `http://localhost:8082/swagger-ui/index.html` (`task-processor`)
 
 ## Notas Adicionales
 
-*   Es necesario Docker y Docker Compose instalados.
-*   Los archivos de configuración (`docker-compose.yml`, `nginx.conf`, `application.properties`) se encuentran en la raíz del proyecto.
-
+*   Es necesario tener Docker y Docker Compose instalados.
+*   Los archivos de configuración (`docker-compose.yml`, `application.properties`) se encuentran en la raíz del proyecto.

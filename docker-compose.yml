@@ -1,39 +1,40 @@
 services:
-  task-processor:
-    image: task-processor
-    ports:
-      - "8080:8080"
-    depends_on:
-      - postgres
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mareo_envios_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: password
-      app.init.db: "false"
-    networks:
-      - mynetwork
-  mareo-envios:
-    image: mareo-envios
-    ports:
-      - "8081:8080"
-    environment:
-      TASK_PROCESSOR_URL: http://task-processor:8080
-    networks:
-      - mynetwork
-    depends_on:
-      - task-processor
   postgres:
-    image: postgres:14
+    image: postgres:15
+    restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: mareo_envios_db
-      PG_INITDB_SKIP_CREATE_DATABASE: true
     ports:
       - "5432:5432"
-    networks:
-      - mynetwork
-    volumes: [] # Corregido: debe ser una lista vacía
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts:/docker-entrypoint-initdb.d
 
-networks:
-  mynetwork:
+  mareo-envios:
+    build:
+      context: ./mareo-envios
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres
+    environment:
+      PORT: 8081
+      app.task-processor.url: http://task-processor:8082
+
+  task-processor:
+    build:
+      context: ./task-processor
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    depends_on:
+      - postgres
+    environment:
+      PORT: 8082
+      app.mareoenvios.url: http://mareo-envios:8081
+      
+volumes:
+  postgres_data:

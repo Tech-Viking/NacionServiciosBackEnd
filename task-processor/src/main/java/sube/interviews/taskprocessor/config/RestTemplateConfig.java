@@ -13,9 +13,12 @@ import org.springframework.web.client.RestTemplate;
 
 @Configuration
 public class RestTemplateConfig {
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
+
+	    @Bean
+	    public RestTemplate restTemplate() {
+	        CloseableHttpClient httpClient = HttpClients.createDefault();
+	        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
+	        return new RestTemplate(factory);
+	    }
 
 }

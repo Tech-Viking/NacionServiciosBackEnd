@@ -31,7 +31,7 @@ import sube.interviews.mareoenvios.service.ShippingService;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/mareo-envios")
 @Tag(name = "Mareo Envíos", description = "Endpoints para administrar la empresa de envíos.")
 public class ShippingController {
 
@@ -97,13 +97,13 @@ public class ShippingController {
 	@Operation(summary = "Actualiza el estado de un envío", description = "Este endpoint actualiza el estado de un envío basado en su ID y el nuevo estado proporcionado.")
 	@ApiResponses(value = {
 			@ApiResponse(responseCode = "200", description = "Estado de envío actualizado", content = @Content(schema = @Schema(type = "string"))) })
-	@PatchMapping("/shippings/{shippingId}")
-	public ResponseEntity<?> updateShipping(@PathVariable Integer shippingId,
-			@Valid @RequestBody TransitionRequest transition) {
-		logger.info("Update shipping requested with id: {}, transition: {}", shippingId, transition.getTransition());
-		shippingService.updateShipping(shippingId, transition.getTransition());
-		logger.info("Shipping state updated with id: {}, transition: {}", shippingId, transition.getTransition());
-		return ResponseEntity.ok("Shipping state updated");
-	}
+	@PatchMapping("/shippings/{shippingId}/transition")
+    public ResponseEntity<?> updateShipping(@PathVariable Integer shippingId,
+            @Valid @RequestBody TransitionRequest transition) {
+        logger.info("Update shipping requested with id: {}, transition: {}", shippingId, transition.getTransition());
+        shippingService.updateShipping(shippingId, transition.getTransition());
+        logger.info("Shipping state updated with id: {}, transition: {}", shippingId, transition.getTransition());
+        return ResponseEntity.ok("Shipping state updated");
+    }
 
 }

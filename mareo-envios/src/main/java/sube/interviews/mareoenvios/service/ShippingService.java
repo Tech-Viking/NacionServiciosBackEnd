@@ -41,24 +41,28 @@ public class ShippingService {
 	}
 
 	public void updateShipping(Integer shippingId, String newState) {
-		logger.info("Updating shipping with id: {}, new state: {}", shippingId, newState);
-		Shipping shipping = shippingRepository.findById(shippingId).orElseThrow(() -> {
-			logger.error("Shipping not found with id: {}", shippingId);
-			return new ResponseStatusException(HttpStatus.NOT_FOUND, "Shipping not found with id: " + shippingId);
-		});
-		if (isValidTransition(shipping.getState(), newState)) {
-			applyDelay(newState);
-			shipping.setState(newState);
-			shippingRepository.save(shipping);
-			logger.info("Shipping with id: {} updated, new state: {}", shippingId, newState);
+		   logger.info("Updating shipping with id: {}, new state: {}", shippingId, newState);
+		   Shipping shipping = shippingRepository.findById(shippingId).orElseThrow(() -> {
+		       logger.error("Shipping not found with id: {}", shippingId);
+		       return new ResponseStatusException(HttpStatus.NOT_FOUND, "Shipping not found with id: " + shippingId);
+		   });
+		   logger.info("Shipping found with id: {}", shippingId);
+		   if (isValidTransition(shipping.getState(), newState)) {
+		       logger.info("Valid transition from {} to {}", shipping.getState(), newState);
+		       applyDelay(newState);
+		        logger.info("Delay applied for transition: {}", newState);
+		       shipping.setState(newState);
+		       logger.info("Shipping state updated to: {}", newState);
+		       shippingRepository.save(shipping);
+		       logger.info("Shipping with id: {} updated, new state: {} in db", shippingId, newState);
 
-		} else {
-			logger.error("Invalid state transition from {} to {}", shipping.getState(), newState);
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"Invalid state transition from " + shipping.getState() + " to " + newState);
+		   } else {
+		       logger.error("Invalid state transition from {} to {}", shipping.getState(), newState);
+		       throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+		               "Invalid state transition from " + shipping.getState() + " to " + newState);
+		   }
+
 		}
-
-	}
 
 	private void applyDelay(String transition) {
 		try {
